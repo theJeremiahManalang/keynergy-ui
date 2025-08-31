@@ -31,16 +31,12 @@ namespace Keyboard_UI
         private Dictionary<Label, Label> countLabels;
         private HashSet<Keys> keysPressed;  // Track which keys are currently pressed
 
-        // for reset of keypress data in firebase
-        private DateTime numLockPressedTime;
-        private bool isNumLockHeld = false;
-
         // Add these new fields to your Form1 class
         private DateTime currentDate = DateTime.Today;
         //private int forTotalKeypress = 0;
         private int todayTotalPresses = 0;
-        private double todayTotalCurrent = 0;
-        private double todayTotalVoltage = 0;
+        //private double todayTotalCurrent = 0;
+        //private double todayTotalVoltage = 0;
 
         private int localKeyPress = 0;
         private int firebasePresses = -1; // Use -1 as a "not yet fetched" marker
@@ -64,17 +60,42 @@ namespace Keyboard_UI
         private bool isTotalUpdatePending = false;
         private readonly object totalUpdateLock = new object();
 
+        // for reset of key's values
+        private Dictionary<Keys, DateTime> keyPressTimes = new Dictionary<Keys, DateTime>();
+        private const int ResetHoldTimeMs = 3000; // 3 seconds in milliseconds
 
+        // serial comms
+        private SerialPort serialPort;
+        private string receivedData = "";
+        private const string PICO_PORT = "COM9";
+        private const int MAX_RECONNECT_ATTEMPTS = 5;
+        private int reconnectAttempts = 0;
+        private System.Timers.Timer reconnectTimer;
 
-
+        // for voltage and current
+        private double todayTotalVoltage = 0;
+        private double todayTotalCurrent = 0;
+        private DateTime lastEnergyUpdateTime = DateTime.Now;
+        private System.Timers.Timer energyAccumulationTimer;
+        private bool formHandleCreated = false;
 
         public Form1()
         {
             InitializeComponent();
             InitializeFirebaseUpdateTimer();
-            //InitializeDailyTotalsTimer();
             InitializeTotalUpdateTimer();
             InitializeUpdateTotalsTimer();
+
+            // for voltage and current
+            this.HandleCreated += (sender, e) => {
+                formHandleCreated = true;
+                InitializeEnergyAccumulationTimer();
+            };
+
+            // serial comms
+            InitializeSerialPortWithRetry();
+            InitializeReconnectTimer();
+
 
             this.Load += Form1_Load;
 
@@ -87,7 +108,9 @@ namespace Keyboard_UI
             //this.KeyDown += new KeyEventHandler(Form1_KeyDown); // Hook up KeyDown event
             //this.KeyUp += new KeyEventHandler(Form1_KeyUp); // Hook up KeyUp event
 
-            dataHistory.Hide(); // open this if may user control 1 na 
+            //dataHistory.Hide(); // open this if may user control 1 na 
+            //.ParentFormInstance = this;
+
 
             // Initialize Firebase client
             client = new FireSharp.FirebaseClient(config);
@@ -159,6 +182,8 @@ namespace Keyboard_UI
                 Keys key = (Keys)vkCode;
 
                 // Simulate Form key press event
+
+
                 this.Invoke(new Action(() =>
                 {
                     Form1_KeyDown(this, new KeyEventArgs(key));
@@ -179,32 +204,296 @@ namespace Keyboard_UI
         }
 
         //////////////////////////////////////////////////////////////////////
+
+
+        ////////////// for serial communication //////////////
+        private void InitializeReconnectTimer()
+        {
+            reconnectTimer = new System.Timers.Timer(5000); // Check every 5 seconds
+            reconnectTimer.Elapsed += (sender, e) => CheckAndReconnectPort();
+            reconnectTimer.AutoReset = true;
+            reconnectTimer.Enabled = true;
+        }
+
+        private void InitializeSerialPortWithRetry()
+        {
+            Console.WriteLine("[Serial] Initializing serial port with retry mechanism...");
+
+            // First try the preferred port
+            if (TryInitializePort(PICO_PORT))
+            {
+                return;
+            }
+
+            // If preferred port fails, scan all available ports
+            ScanAndConnectToAvailablePort();
+        }
+
+        private bool TryInitializePort(string portName)
+        {
+            Console.WriteLine($"[Serial] Attempting to initialize {portName}...");
+
+            try
+            {
+                if (serialPort != null && serialPort.IsOpen)
+                {
+                    serialPort.Close();
+                    serialPort.Dispose();
+                }
+
+                serialPort = new SerialPort(portName, 115200)
+                {
+                    Parity = Parity.None,
+                    DataBits = 8,
+                    StopBits = StopBits.One,
+                    Handshake = Handshake.None,
+                    RtsEnable = true,
+                    DtrEnable = true,
+                    NewLine = "\n",
+                    ReadTimeout = 1000,
+                    WriteTimeout = 1000
+                };
+
+                serialPort.DataReceived += SerialPort_DataReceived;
+                serialPort.ErrorReceived += SerialPort_ErrorReceived;
+
+                if (!serialPort.IsOpen)
+                {
+                    serialPort.Open();
+                    Console.WriteLine($"[Serial] Successfully opened {portName}");
+
+                    // Test communication
+                    serialPort.WriteLine("PING");
+                    Console.WriteLine("[Serial] PING sent");
+
+                    reconnectAttempts = 0; // Reset attempts on success
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Serial] Error initializing {portName}: {ex.Message}");
+            }
+
+            return false;
+        }
+
+        private void ScanAndConnectToAvailablePort()
+        {
+            Console.WriteLine("[Serial] Scanning for available ports...");
+            var ports = SerialPort.GetPortNames().OrderBy(p => p).ToArray();
+            Console.WriteLine($"[Serial] Found ports: {string.Join(", ", ports)}");
+
+            foreach (var port in ports)
+            {
+                if (TryInitializePort(port))
+                {
+                    Console.WriteLine($"[Serial] Connected to alternative port: {port}");
+                    return;
+                }
+            }
+
+            Console.WriteLine("[Serial] Could not connect to any available port");
+            reconnectAttempts++;
+
+            if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS)
+            {
+                Console.WriteLine("[Serial] Max reconnect attempts reached. Stopping retries.");
+                reconnectTimer.Enabled = false;
+            }
+        }
+
+        private void CheckAndReconnectPort()
+        {
+            if (serialPort == null || !serialPort.IsOpen)
+            {
+                Console.WriteLine("[Serial] Port not connected. Attempting to reconnect...");
+                if (this.IsHandleCreated)
+                {
+                    this.Invoke((MethodInvoker)delegate {
+                        ScanAndConnectToAvailablePort();
+                    });
+                }
+                else
+                {
+                    // Handle case when window isn't ready yet
+                    ScanAndConnectToAvailablePort();
+                }
+            }
+            else
+            {
+                // Verify the port is still responsive
+                try
+                {
+                    serialPort.WriteLine("PING");
+                    Console.WriteLine("[Serial] Keep-alive PING sent");
+                }
+                catch
+                {
+                    Console.WriteLine("[Serial] Port appears to be disconnected");
+                    serialPort.Close();
+                }
+            }
+        }
+
+        private void SerialPort_ErrorReceived(object sender, SerialErrorReceivedEventArgs e)
+        {
+            Console.WriteLine($"[Serial] Error received: {e.EventType}");
+            // Trigger reconnection attempt
+            this.Invoke((MethodInvoker)delegate {
+                ScanAndConnectToAvailablePort();
+            });
+        }
+
+        private void SerialPort_DataReceived(object sender, SerialDataReceivedEventArgs e)
+        {
+            try
+            {
+                Console.WriteLine($"[Serial] DataReceived event triggered. EventType: {e.EventType}");
+
+                if (!serialPort.IsOpen)
+                {
+                    Console.WriteLine("[Serial] Warning: Port is not open in DataReceived handler");
+                    return;
+                }
+
+                int bytesToRead = serialPort.BytesToRead;
+                Console.WriteLine($"[Serial] Bytes available: {bytesToRead}");
+
+                if (bytesToRead == 0)
+                {
+                    Console.WriteLine("[Serial] No data available despite event");
+                    return;
+                }
+
+                string newData = serialPort.ReadExisting();
+                Console.WriteLine($"[Serial] Raw data received ({newData.Length} chars): {EscapeNonPrintable(newData)}");
+
+                receivedData += newData;
+                Console.WriteLine($"[Serial] Buffer content: {EscapeNonPrintable(receivedData)}");
+
+                while (receivedData.Contains("\n"))
+                {
+                    int newlinePos = receivedData.IndexOf('\n');
+                    string line = receivedData.Substring(0, newlinePos).Trim();
+                    receivedData = receivedData.Substring(newlinePos + 1);
+
+                    Console.WriteLine($"[Serial] Processing line: {EscapeNonPrintable(line)}");
+                    Console.WriteLine($"[Serial] Remaining buffer: {EscapeNonPrintable(receivedData)}");
+
+                    if (line.StartsWith("VOLTAGE:"))
+                    {
+                        string voltageStr = line.Substring(8);
+                        Console.WriteLine($"[Serial] Found voltage string: {voltageStr}");
+
+                        if (double.TryParse(voltageStr, out double voltage))
+                        {
+                            Console.WriteLine($"[Serial] Successfully parsed voltage: {voltage:F2}");
+
+                            this.Invoke((MethodInvoker)delegate {
+                                double durationSeconds = 5; // example duration
+                                double timeHours = durationSeconds / 3600.0; // convert to hours
+                                double current = 1.93;
+
+                                double energyWh = voltage * current * timeHours * 1000;
+
+                                labelVoltageSerial.Text = $"{energyWh:F2} μWh";
+                                Console.WriteLine($"[UI] Updated labelVoltageSerial to: {energyWh:F4} Wh");
+                            });
+                        }
+                        else
+                        {
+                            Console.WriteLine($"[Serial] Failed to parse voltage from: {voltageStr}");
+                        }
+                    }
+                    else if (line.StartsWith("CURRENT:"))
+                    {
+                        string currentStr = line.Substring(8);
+                        Console.WriteLine($"[Serial] Found current string: {currentStr}");
+
+                        if (double.TryParse(currentStr, out double current))
+                        {
+                            Console.WriteLine($"[Serial] Successfully parsed current: {current:F2}");
+
+                            this.Invoke((MethodInvoker)delegate {
+                                //labelCurrentSerial.Text = $"{current:F2} A";
+                                Console.WriteLine($"[UI] Updated labelCurrentSerial to: {current:F2} A");
+                            });
+                        }
+                        else
+                        {
+                            Console.WriteLine($"[Serial] Failed to parse current from: {currentStr}");
+                        }
+                    }
+                    else if (line.Length > 0)
+                    {
+                        Console.WriteLine($"[Serial] Received non-voltage line: {line}");
+                    }
+                }
+            }
+            catch (TimeoutException tex)
+            {
+                Console.WriteLine($"[Serial] Timeout: {tex.Message}");
+            }
+            catch (InvalidOperationException ioex)
+            {
+                Console.WriteLine($"[Serial] Port operation error: {ioex.Message}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Serial] Error in handler: {ex.Message}");
+            }
+        }
+
+        // Helper method to make non-printable characters visible in console
+        private string EscapeNonPrintable(string input)
+        {
+            return input.Replace("\r", "\\r").Replace("\n", "\\n").Replace("\0", "\\0");
+        }
+        //////////////////////////////////////////////////////
+
+
+        private async void resetButton1_Click(object sender, EventArgs e)
+        {
+            await ResetKeyPressCountInFirebase("1");
+        }
+
         private async void Form1_Load(object sender, EventArgs e)
         {
             await LoadDailyHistoryFromFirebase();  // <-- Initial load
             await UpdateTotals();
+            //dataHistory.UpdateGrandTotals();
+
+            //this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
+            //this.WindowState = FormWindowState.Maximized;
+            this.CenterToScreen();
         }
+
+
 
         private async void Form1_KeyDown(object sender, KeyEventArgs e)
         {
             string keyPressed = string.Empty;
 
             //Console.WriteLine($"totoo: {e.KeyCode}");
-
-            // Check if the key has already been pressed
             if (keysPressed.Contains(e.KeyCode)) return;  // If already pressed, do nothing
 
-            // Check for regular number keys (1-9, 0)
+            // track when key is pressed
+            if (!keyPressTimes.ContainsKey(e.KeyCode))
+            {
+                keyPressTimes[e.KeyCode] = DateTime.Now;
+            }
+
             if (e.KeyCode >= Keys.D0 && e.KeyCode <= Keys.D9)
             {
                 keyPressed = e.KeyCode.ToString().Substring(1); // Remove the 'D' prefix (e.g., D0 -> 0)
             }
-            // Check for number pad keys (NumPad 0-9)
+
             /*else if (e.KeyCode >= Keys.NumPad0 && e.KeyCode <= Keys.NumPad9)
             {
                 keyPressed = e.KeyCode.ToString().Substring(6); // Remove the 'NumPad' prefix (e.g., NumPad0 -> 0)
             }*/
-            // Handle the period key on the main keyboard (.)
+
             else if (e.KeyCode == Keys.OemPeriod)
             {
                 keyPressed = "."; // Set keyPressed to "."
@@ -226,7 +515,7 @@ namespace Keyboard_UI
             {
                 keyPressed = "*";  // Numpad *
             }
-            else if (e.KeyCode == Keys.Divide)
+            else if (e.KeyCode == Keys.OemQuestion)
             {
                 keyPressed = "/";  // Numpad /
             }
@@ -237,12 +526,6 @@ namespace Keyboard_UI
             else if (e.KeyCode == Keys.NumLock)
             {
                 keyPressed = "NL";
-
-                if (!isNumLockHeld)
-                {
-                    numLockPressedTime = DateTime.Now;
-                    isNumLockHeld = true;
-                }
             }
 
             // Log the key pressed
@@ -256,18 +539,16 @@ namespace Keyboard_UI
                     if (key.Text == keyPressed)
                     {
                         // when button is pressed
-                        if (keyPressCounts[key] >= 200)
+                        if (keyPressCounts[key] >= 400)
                         {
                             key.BackColor = Color.FromArgb(231, 106, 94); // light red
                             key.ForeColor = Color.Black;
                         }
-
-                        else if (keyPressCounts[key] >= 100)
+                        else if (keyPressCounts[key] >= 200)
                         {
                             key.BackColor = Color.FromArgb(255, 239, 166); // light yellow
                             key.ForeColor = Color.Black;
                         }
-
                         else
                         {
                             key.BackColor = Color.FromArgb(255, 201, 107); // light orange
@@ -277,9 +558,9 @@ namespace Keyboard_UI
                         // Increment the count for the key
                         keyPressCounts[key]++;
                         countLabels[key].Text = $"{keyPressCounts[key]}";
-                        
+
                         localKeyPress++;
-                        
+
 
                         //Console.WriteLine($"totoo: {todayTotalPresses}");
 
@@ -321,7 +602,7 @@ namespace Keyboard_UI
                     var allData = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(response.Body.ToString());
                     string today = DateTime.Now.ToString("yyyy-MM-dd");
 
-                    foreach (var entry in allData.OrderBy(e => e.Key))
+                    foreach (var entry in allData.OrderByDescending(e => e.Key))
                     {
                         string date = entry.Key;
 
@@ -337,10 +618,12 @@ namespace Keyboard_UI
                         double totalVoltage = totals.TotalVoltage != null ? (double)totals.TotalVoltage : 0;
 
                         // Update the UI or control
-                        dataHistory.AddOrUpdateRow(date, totalPresses, totalCurrent, totalVoltage);
+                        //dataHistory.AddOrUpdateRow(date, totalPresses, totalVoltage, totalCurrent);
+
 
                         //Console.WriteLine($"Loaded: {date} | Presses: {totalPresses}, Current: {totalCurrent}, Voltage: {totalVoltage}");
                     }
+
                 }
             }
             catch (Exception ex)
@@ -364,6 +647,49 @@ namespace Keyboard_UI
             }
         }
 
+        private void AccumulateEnergy()
+        {
+            try
+            {
+                // Check if controls are still valid
+                if (this.IsDisposed || labelVoltageSerial.IsDisposed)
+                    return;
+
+                DateTime now = DateTime.Now;
+                double timeElapsed = (now - lastEnergyUpdateTime).TotalHours; // in hours
+
+                if (double.TryParse(labelVoltageSerial.Text.Replace(" V", ""), out double currentVoltage))
+                {
+                    // Calculate energy since last update (Wh = V * A * h)
+                    double voltageIncrement = currentVoltage * timeElapsed;
+                    //double currentIncrement = currentCurrent * timeElapsed;
+
+                    // Update daily totals
+                    todayTotalVoltage += voltageIncrement;
+                    //todayTotalCurrent += currentIncrement;
+
+                    // Update the UI if controls exist
+                    /*if (!labelTotalVoltage.IsDisposed)
+                        labelTotalVoltage.Text = $"{todayTotalVoltage:F2} V";
+                    if (!labelTotalCurrent.IsDisposed)
+                        labelTotalCurrent.Text = $"{todayTotalCurrent:F2} A";*/
+
+                    // Update last update time
+                    lastEnergyUpdateTime = now;
+
+                    // Flag for Firebase update
+                    lock (totalUpdateLock)
+                    {
+                        isTotalUpdatePending = true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Energy Accumulation] Error: {ex.Message}");
+            }
+        }
+
 
         // for total voltage and current
         private async Task UpdateTotals()
@@ -376,24 +702,34 @@ namespace Keyboard_UI
                 if (firebasePresses == -1)
                 {
                     var dailyTotals = await GetDailyTotalsFromFirebase();
-                    firebasePresses = dailyTotals != null ? (int)dailyTotals.TotalPresses : 0;
+                    if (dailyTotals != null)
+                    {
+                        firebasePresses = (int)dailyTotals.TotalPresses;
+                        todayTotalVoltage = dailyTotals.TotalVoltage ?? 0;
+                        todayTotalCurrent = dailyTotals.TotalCurrent ?? 0;
+
+                        // Update UI with loaded values
+                        //labelTotalVoltage.Text = $"{todayTotalVoltage:F2} Vh";
+                        //labelTotalCurrent.Text = $"{todayTotalCurrent:F2} Ah";
+                    }
                 }
-                // Use cached firebasePresses + localKeyPress
+
                 todayTotalPresses = firebasePresses + localKeyPress;
 
-                todayTotalVoltage = todayTotalPresses * 1.565;
-                todayTotalCurrent = todayTotalPresses * 0.7544;
+                //todayTotalVoltage = todayTotalPresses * 1.565;
+                //todayTotalCurrent = todayTotalPresses * 0.7544;
 
                 // Update UI
-                UpdateTotalsUI();
+                //UpdateTotalsUI();
 
                 string today = DateTime.Now.ToString("yyyy-MM-dd");
                 // Update the data history
-                dataHistory.todayAddOrUpdateRow(today, todayTotalPresses, todayTotalCurrent, todayTotalVoltage);
+                //dataHistory.todayAddOrUpdateRow(today, todayTotalPresses, todayTotalVoltage, todayTotalCurrent);
 
 
                 // Fire-and-forget the Firebase update (don't await)
                 _ = SaveDailyTotalsToFirebase();
+                //dataHistory.UpdateGrandTotals();
             }
             catch (Exception ex)
             {
@@ -403,20 +739,18 @@ namespace Keyboard_UI
 
 
 
-        private void UpdateTotalsUI()
+        public void UpdateTotalsUI(Label totalCurrentLabel, Label totalVoltageLabel)
         {
             if (this.InvokeRequired)
             {
-                this.BeginInvoke(new Action(UpdateTotalsUI));
+                this.BeginInvoke(new Action(() => UpdateTotalsUI(totalCurrentLabel, totalVoltageLabel)));
                 return;
             }
 
-            labelTotalVoltage.Text = $"{todayTotalVoltage:F2} V";
-            labelTotalCurrent.Text = $"{todayTotalCurrent:F2} mA";
-
-            
-
+            //labelTotalCurrent.Text = totalCurrentLabel.Text;
+            //labelTotalVoltage.Text = totalVoltageLabel.Text;
         }
+
 
         private async Task<dynamic> GetDailyTotalsFromFirebase()
         {
@@ -444,21 +778,22 @@ namespace Keyboard_UI
             });
         }
 
-        private void Form1_KeyUp(object sender, KeyEventArgs e)
+        private async void Form1_KeyUp(object sender, KeyEventArgs e)
         {
-            // reset if num lock is held until 3 seconds
-            if (e.KeyCode == Keys.NumLock && isNumLockHeld)
+            // check if held for 3 seconds
+            if (keyPressTimes.TryGetValue(e.KeyCode, out var pressTime))
             {
-                // 3 seconds
-                if ((DateTime.Now - numLockPressedTime).TotalSeconds > 3)
+                var holdTime = DateTime.Now - pressTime;
+                if (holdTime.TotalMilliseconds >= ResetHoldTimeMs)
                 {
-                    // reset all data
-                    ResetAllKeyPressCountsInFirebase().ConfigureAwait(false);
-                    MessageBox.Show("All key press data has been reset due to prolonged NumLock press.", "Reset Successful", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    // Map the Keys enum to your key text format
+                    string keyText = MapKeyCodeToText(e.KeyCode);
+                    if (!string.IsNullOrEmpty(keyText))
+                    {
+                        await ResetKeyPressCountInFirebase(keyText);
+                    }
                 }
-
-                // Reset NumLock press tracking
-                isNumLockHeld = false;
+                keyPressTimes.Remove(e.KeyCode); // Remove from tracking
             }
 
             // Reset the key appearance when the key is released
@@ -470,13 +805,13 @@ namespace Keyboard_UI
                     key.ForeColor = Color.Black;
                 }
 
-                if (keyPressCounts[key] >= 200)
+                if (keyPressCounts[key] >= 400)
                 {
                     key.BackColor = Color.FromArgb(192, 57, 43); // red
                     key.ForeColor = Color.Black;
                 }
 
-                else if (keyPressCounts[key] >= 100)
+                else if (keyPressCounts[key] >= 200)
                 {
                     key.BackColor = Color.FromArgb(252, 215, 95); // yellow
                     key.ForeColor = Color.Black;
@@ -493,9 +828,34 @@ namespace Keyboard_UI
             keysPressed.Remove(e.KeyCode);
         }
 
+        // for voltage and current
+        private void InitializeEnergyAccumulationTimer()
+        {
+            // Only initialize if handle is created
+            if (!formHandleCreated) return;
 
-        // update the DailyTotals in the firebase after 30 seconds
-        
+            energyAccumulationTimer = new System.Timers.Timer(1000); // Update every second
+            energyAccumulationTimer.Elapsed += EnergyAccumulationTimer_Elapsed;
+            energyAccumulationTimer.AutoReset = true;
+            energyAccumulationTimer.Start();
+        }
+
+        private void EnergyAccumulationTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        {
+            // Safe invoke check
+            if (!formHandleCreated || this.IsDisposed) return;
+
+            try
+            {
+                // Use BeginInvoke instead of Invoke for better performance
+                this.BeginInvoke(new Action(AccumulateEnergy));
+            }
+            catch (InvalidOperationException)
+            {
+                // Handle the case when the form is closing
+                energyAccumulationTimer?.Stop();
+            }
+        }
 
         // every two seconds mag update sa firebase
         private void InitializeFirebaseUpdateTimer()
@@ -560,7 +920,7 @@ namespace Keyboard_UI
                 pendingFirebaseUpdates.Clear();
             }
 
-       
+
             foreach (var update in updatesToProcess)
             {
                 try
@@ -583,7 +943,7 @@ namespace Keyboard_UI
                 }
             }
 
-            
+
         }
 
         private async Task LoadKeyPressCountsFromFirebase()
@@ -610,13 +970,13 @@ namespace Keyboard_UI
                             totalPresses += count;
 
                             // Set background color based on count
-                            if (keyPressCounts[key] >= 200)
+                            if (keyPressCounts[key] >= 400)
                             {
                                 key.BackColor = Color.FromArgb(192, 57, 43); // red
                                 key.ForeColor = Color.Black;
                             }
 
-                            else if (keyPressCounts[key] >= 100)
+                            else if (keyPressCounts[key] >= 200)
                             {
                                 key.BackColor = Color.FromArgb(252, 215, 95); // yellow
                                 key.ForeColor = Color.Black;
@@ -645,8 +1005,8 @@ namespace Keyboard_UI
                 }
                 // Set today's totals
                 //todayTotalPresses = totalPresses;
-                todayTotalVoltage = todayTotalPresses * 1.565;
-                todayTotalCurrent = todayTotalPresses * 0.7544;
+                //todayTotalVoltage = todayTotalPresses * 1.565;
+                //todayTotalCurrent = todayTotalPresses * 0.7544;
 
                 //await LoadHistoricalData(); // Add this line
 
@@ -680,7 +1040,6 @@ namespace Keyboard_UI
                     TotalPresses = todayTotalPresses,
                     TotalCurrent = todayTotalCurrent,
                     TotalVoltage = todayTotalVoltage,
-                    //Timestamp = DateTime.Now.ToString("o")
                 };
 
                 // Add retry logic
@@ -714,39 +1073,106 @@ namespace Keyboard_UI
                 }
             }
         }
-        // reset keypresses value
-        private async Task ResetAllKeyPressCountsInFirebase()
+
+        // Helper method to map Keys enum to your key text format
+        private string MapKeyCodeToText(Keys keyCode)
+        {
+            switch (keyCode)
+            {
+                case Keys.D0: return "0";
+                case Keys.D1: return "1";
+                // ... add all your other key mappings
+                case Keys.OemPeriod: return ".";
+                case Keys.Decimal: return ".";
+                case Keys.Add: return "+";
+                case Keys.Subtract: return "-";
+                case Keys.Multiply: return "*";
+                case Keys.OemQuestion: return "/";
+                case Keys.Enter: return "Enter";
+                case Keys.NumLock: return "NL";
+                default: return null;
+            }
+        }
+
+        // Add this new method to reset a specific key
+        private async Task ResetKeyPressCountInFirebase(string keyText)
         {
             try
             {
-                foreach (var key in keys)
+                // Find the corresponding label
+                var key = keys.FirstOrDefault(k => k.Text == keyText);
+                if (key == null) return;
+
+                // Show confirmation dialog
+                DialogResult result = MessageBox.Show(
+                    $"Are you sure you want to reset the counter for key '{keyText}'?",
+                    "Confirm Reset",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question,
+                    MessageBoxDefaultButton.Button2); // Default to "No"
+
+                // If user clicked No, cancel the reset
+                if (result != DialogResult.Yes)
                 {
-                    string firebaseKey = key.Text.Replace(".", "_dot").Replace("/", "_slash");
-                    string firebasePath = $"KeyPressCounts/{firebaseKey}";
-
-                    // Reset value in Firebase using Task.Run
-                    await Task.Run(() => client.Set(firebasePath, 0));
-
-                    // Reset local count and update label and UI
-                    keyPressCounts[key] = 0;
-                    countLabels[key].Text = "0";
-                    labelTotalCurrent.Text = "0";
-                    labelTotalVoltage.Text = "0";
-                    key.BackColor = Color.FromArgb(237, 172, 46); // default orange
-                    key.ForeColor = Color.Black;
+                    return;
                 }
 
-                MessageBox.Show("All key press data has been reset!", "Reset Successful", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                string firebaseKey = keyText.Replace(".", "_dot").Replace("/", "_slash");
+                string firebasePath = $"KeyPressCounts/{firebaseKey}";
+
+                // Show loading/processing indication
+                Cursor.Current = Cursors.WaitCursor;
+                key.BackColor = Color.LightGray; // Visual feedback that reset is in progress
+
+                // Reset value in Firebase
+                await Task.Run(() => client.Set(firebasePath, 0));
+
+                // Reset local count and update UI
+                keyPressCounts[key] = 0;
+                countLabels[key].Text = "0";
+                key.BackColor = Color.FromArgb(237, 172, 46); // default orange
+                key.ForeColor = Color.Black;
+
+                // Update totals since we've changed a key's count
+                await UpdateTotals();
+
+                // Show success message
+                MessageBox.Show(
+                    $"The counter for key '{keyText}' has been successfully reset to 0.",
+                    "Reset Successful",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error resetting Firebase data: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(
+                    $"Error resetting key data: {ex.Message}",
+                    "Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+            finally
+            {
+                Cursor.Current = Cursors.Default; // Restore normal cursor
             }
         }
 
         // when delete all
         protected override async void OnFormClosing(FormClosingEventArgs e)
         {
+            //for serial
+            if (serialPort != null)
+            {
+                if (serialPort.IsOpen)
+                {
+                    serialPort.Close();
+                }
+                serialPort.Dispose();
+            }
+
+            energyAccumulationTimer?.Stop();
+            energyAccumulationTimer?.Dispose();
+
             // Stop timers first
             updateTotalsTimer?.Stop();
             dailyTotalsTimer?.Stop();
@@ -765,12 +1191,12 @@ namespace Keyboard_UI
 
         private void homeButton_Click_1(object sender, EventArgs e)
         {
-            dataHistory.Hide();
+            //dataHistory.Hide();
         }
         private async void dataButton_Click_1(object sender, EventArgs e)
         {
-            dataHistory.Show();
-            dataHistory.BringToFront();
+            //dataHistory.Show();
+            //dataHistory.BringToFront();
 
             //lastRowUpdateTimes.Clear();
             //dataHistory.ClearRows();
@@ -780,6 +1206,11 @@ namespace Keyboard_UI
         private void bellaButton_Click_1(object sender, EventArgs e)
         {
             MessageBox.Show($"I love you my bellapotpot");
+        }
+
+        private void textBox26_TextChanged(object sender, EventArgs e)
+        {
+
         }
     }
 

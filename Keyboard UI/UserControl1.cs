@@ -13,6 +13,8 @@ namespace Keyboard_UI
     public partial class dataHistory : UserControl
     {
         private Dictionary<string, int> rowLookup = new Dictionary<string, int>();
+        public Form1 ParentFormInstance { get; set; }
+
 
         public dataHistory()
         {
@@ -46,12 +48,14 @@ namespace Keyboard_UI
 
             rowLookup.Clear();
         }
-        public void todayAddOrUpdateRow(string date, int totalKeypresses, double totalCurrent, double totalVoltage)
+        public void todayAddOrUpdateRow(string date, int totalKeypresses, double totalVoltage, double totalCurrent)
         {
             todayDateLabel.Text = date;
             todayKeypressesLabel.Text = totalKeypresses.ToString();
-            todayCurrentLabel.Text = $"{totalCurrent:F2} mA";
-            todayVoltageLabel.Text = $"{totalVoltage:F2} V";
+            todayVoltageLabel.Text = $"{totalCurrent:F2} V";
+            todayCurrentLabel.Text = $"{totalVoltage:F2} mA";
+
+
 
             // If today row doesn't exist yet, add it manually (just once)
             if (dataHistoryTable.RowCount < 2)
@@ -61,47 +65,39 @@ namespace Keyboard_UI
 
                 dataHistoryTable.Controls.Add(todayDateLabel, 0, 1);
                 dataHistoryTable.Controls.Add(todayKeypressesLabel, 1, 1);
-                dataHistoryTable.Controls.Add(todayCurrentLabel, 2, 1);
-                dataHistoryTable.Controls.Add(todayVoltageLabel, 3, 1);
+                dataHistoryTable.Controls.Add(todayVoltageLabel, 2, 1);
+                dataHistoryTable.Controls.Add(todayCurrentLabel, 3, 1);
+
+
             }
         }
 
-        public void AddOrUpdateRow(string date, int totalKeypresses, double totalCurrent, double totalVoltage)
+        public void AddOrUpdateRow(string date, int totalKeypresses, double totalVoltage, double totalCurrent)
         {
             // If the date already exists, update the row
             if (rowLookup.TryGetValue(date, out int existingRowIndex))
             {
                 ((Label)dataHistoryTable.GetControlFromPosition(0, existingRowIndex)).Text = date;
                 ((Label)dataHistoryTable.GetControlFromPosition(1, existingRowIndex)).Text = totalKeypresses.ToString();
-                ((Label)dataHistoryTable.GetControlFromPosition(2, existingRowIndex)).Text = $"{totalCurrent:F2} mA";
-                ((Label)dataHistoryTable.GetControlFromPosition(3, existingRowIndex)).Text = $"{totalVoltage:F2} V";
+                ((Label)dataHistoryTable.GetControlFromPosition(2, existingRowIndex)).Text = $"{totalVoltage:F2} V";
+                ((Label)dataHistoryTable.GetControlFromPosition(3, existingRowIndex)).Text = $"{totalCurrent:F2} mA";
+
                 return;
             }
 
-            // Shift existing rows down (starting from the last row, excluding header at row 0)
-            int dataRowStart = 2; // Leave header untouched
-            int newRowIndex = dataRowStart;
+            // Add a new row
+            int newRowIndex = dataHistoryTable.RowCount;
+            dataHistoryTable.RowCount++;
+            dataHistoryTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 50F));
 
-            dataHistoryTable.RowCount += 1;
-            dataHistoryTable.RowStyles.Insert(newRowIndex, new RowStyle(SizeType.Absolute, 50F));
 
-            for (int i = dataHistoryTable.RowCount - 1; i >= 0; i--)
-            {
-                var control = dataHistoryTable.Controls[i];
-                var pos = dataHistoryTable.GetPositionFromControl(control);
-
-                if (pos.Row >= newRowIndex)
-                {
-                    dataHistoryTable.SetRow(control, pos.Row + 1);
-                }
-            }
 
             // Create new labels
             Label dateLabel = new Label()
             {
                 Text = date,
                 Anchor = AnchorStyles.None,
-                TextAlign = ContentAlignment.MiddleCenter,
+                TextAlign = ContentAlignment.TopCenter,
                 AutoSize = true
             };
 
@@ -109,15 +105,7 @@ namespace Keyboard_UI
             {
                 Text = totalKeypresses.ToString(),
                 Anchor = AnchorStyles.None,
-                TextAlign = ContentAlignment.MiddleCenter,
-                AutoSize = true
-            };
-
-            Label currentLabel = new Label()
-            {
-                Text = $"{totalCurrent:F2} mA",
-                Anchor = AnchorStyles.None,
-                TextAlign = ContentAlignment.MiddleCenter,
+                TextAlign = ContentAlignment.TopCenter,
                 AutoSize = true
             };
 
@@ -125,27 +113,96 @@ namespace Keyboard_UI
             {
                 Text = $"{totalVoltage:F2} V",
                 Anchor = AnchorStyles.None,
-                TextAlign = ContentAlignment.MiddleCenter,
+                TextAlign = ContentAlignment.TopCenter,
                 AutoSize = true
             };
 
-            // Insert into Row 1 (just under the header)
-            dataHistoryTable.Controls.Add(dateLabel, 0, dataRowStart);
-            dataHistoryTable.Controls.Add(keypressLabel, 1, dataRowStart);
-            dataHistoryTable.Controls.Add(currentLabel, 2, dataRowStart);
-            dataHistoryTable.Controls.Add(voltageLabel, 3, dataRowStart);
-
-            // Update row lookup: shift existing indexes +1, then insert the new one
-            var updatedLookup = new Dictionary<string, int>();
-            foreach (var kvp in rowLookup)
+            Label currentLabel = new Label()
             {
-                updatedLookup[kvp.Key] = kvp.Value + 1;
-            }
-            updatedLookup[date] = newRowIndex;
-            rowLookup = updatedLookup;
+                Text = $"{totalCurrent:F2} mA",
+                Anchor = AnchorStyles.None,
+                TextAlign = ContentAlignment.TopCenter,
+                AutoSize = true
+            };
+
+            // Add controls to the table
+            dataHistoryTable.Controls.Add(dateLabel, 0, newRowIndex);
+            dataHistoryTable.Controls.Add(keypressLabel, 1, newRowIndex);
+            dataHistoryTable.Controls.Add(voltageLabel, 2, newRowIndex);
+            dataHistoryTable.Controls.Add(currentLabel, 3, newRowIndex);
+
+
+            // Update row lookup
+            rowLookup[date] = newRowIndex;
+
         }
 
-        
+        public void UpdateGrandTotals()
+        {
+            int totalKeypresses = 0;
+            double totalCurrent = 0;
+            double totalVoltage = 0;
+
+            // Start from row 2 to skip header (0) and today's row (1)
+            for (int row = 1; row < dataHistoryTable.RowCount; row++)
+            {
+                try
+                {
+                    // Get controls safely
+                    var keypressControl = dataHistoryTable.GetControlFromPosition(1, row);
+                    var voltageControl = dataHistoryTable.GetControlFromPosition(2, row);
+                    var currentControl = dataHistoryTable.GetControlFromPosition(3, row);
+
+
+                    if (keypressControl is Label keypressLabel &&
+                        currentControl is Label currentLabel &&
+                        voltageControl is Label voltageLabel)
+                    {
+                        var keypressText = keypressLabel.Text;
+                        var currentText = currentLabel.Text.Replace(" mA", "").Trim();
+                        var voltageText = voltageLabel.Text.Replace(" V", "").Trim();
+
+                        // Parse keypresses
+                        if (int.TryParse(keypressText, out int kp))
+                            totalKeypresses += kp;
+
+                        // Parse current - handle potential decimal separators
+                        if (double.TryParse(currentText, System.Globalization.NumberStyles.Any,
+                            System.Globalization.CultureInfo.InvariantCulture, out double curr))
+                            totalCurrent += curr;
+
+                        // Parse voltage - handle potential decimal separators
+                        if (double.TryParse(voltageText, System.Globalization.NumberStyles.Any,
+                            System.Globalization.CultureInfo.InvariantCulture, out double volt))
+                            totalVoltage += volt;
+                        else
+                        {
+                            // Debugging output
+                            Console.WriteLine($"Failed to parse voltage text: '{voltageText}'");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Log the specific error
+                    Console.WriteLine($"Error processing row {row}: {ex.Message}");
+                    continue;
+                }
+            }
+
+            string today = DateTime.Now.ToString("yyyy-MM-dd");
+
+            // Now update the labels you're targeting
+            totalDateLabel.Text = today;
+            totalKeypressLabel.Text = totalKeypresses.ToString();
+            totalCurrentLabel.Text = $"{totalCurrent:F2} mA";
+            totalVoltageLabel.Text = $"{totalVoltage:F2} V";
+
+            //ParentFormInstance?.UpdateTotalsUI(totalCurrentLabel, totalVoltageLabel);
+        }
+
+
+
         public class HorizontalScrollOnlyPanel : Panel
         {
             protected override System.Windows.Forms.CreateParams CreateParams

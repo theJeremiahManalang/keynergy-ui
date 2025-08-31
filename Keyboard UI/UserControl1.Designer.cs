@@ -38,15 +38,15 @@
             this.label5 = new System.Windows.Forms.Label();
             this.totalDateLabel = new System.Windows.Forms.Label();
             this.dataHistoryTable = new System.Windows.Forms.TableLayoutPanel();
+            this.todayCurrentLabel = new System.Windows.Forms.Label();
+            this.todayVoltageLabel = new System.Windows.Forms.Label();
+            this.todayKeypressesLabel = new System.Windows.Forms.Label();
+            this.todayDateLabel = new System.Windows.Forms.Label();
             this.label4 = new System.Windows.Forms.Label();
             this.label3 = new System.Windows.Forms.Label();
             this.label1 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
             this.textBox18 = new System.Windows.Forms.TextBox();
-            this.todayDateLabel = new System.Windows.Forms.Label();
-            this.todayKeypressesLabel = new System.Windows.Forms.Label();
-            this.todayCurrentLabel = new System.Windows.Forms.Label();
-            this.todayVoltageLabel = new System.Windows.Forms.Label();
             this.panel1.SuspendLayout();
             this.dataHistoryTable.SuspendLayout();
             this.SuspendLayout();
@@ -73,7 +73,7 @@
             this.totalVoltageLabel.Anchor = System.Windows.Forms.AnchorStyles.None;
             this.totalVoltageLabel.AutoSize = true;
             this.totalVoltageLabel.Font = new System.Drawing.Font("Segoe UI Black", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.totalVoltageLabel.Location = new System.Drawing.Point(783, 492);
+            this.totalVoltageLabel.Location = new System.Drawing.Point(517, 523);
             this.totalVoltageLabel.Name = "totalVoltageLabel";
             this.totalVoltageLabel.Size = new System.Drawing.Size(145, 28);
             this.totalVoltageLabel.TabIndex = 13;
@@ -85,7 +85,7 @@
             this.totalCurrentLabel.Anchor = System.Windows.Forms.AnchorStyles.None;
             this.totalCurrentLabel.AutoSize = true;
             this.totalCurrentLabel.Font = new System.Drawing.Font("Segoe UI Black", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.totalCurrentLabel.Location = new System.Drawing.Point(515, 492);
+            this.totalCurrentLabel.Location = new System.Drawing.Point(783, 523);
             this.totalCurrentLabel.Name = "totalCurrentLabel";
             this.totalCurrentLabel.Size = new System.Drawing.Size(145, 28);
             this.totalCurrentLabel.TabIndex = 12;
@@ -97,7 +97,7 @@
             this.totalKeypressLabel.Anchor = System.Windows.Forms.AnchorStyles.None;
             this.totalKeypressLabel.AutoSize = true;
             this.totalKeypressLabel.Font = new System.Drawing.Font("Segoe UI Black", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.totalKeypressLabel.Location = new System.Drawing.Point(244, 492);
+            this.totalKeypressLabel.Location = new System.Drawing.Point(257, 523);
             this.totalKeypressLabel.Name = "totalKeypressLabel";
             this.totalKeypressLabel.Size = new System.Drawing.Size(158, 28);
             this.totalKeypressLabel.TabIndex = 11;
@@ -109,7 +109,7 @@
             this.label8.Anchor = System.Windows.Forms.AnchorStyles.None;
             this.label8.AutoSize = true;
             this.label8.Font = new System.Drawing.Font("Segoe UI Black", 7F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label8.Location = new System.Drawing.Point(723, 477);
+            this.label8.Location = new System.Drawing.Point(541, 508);
             this.label8.Name = "label8";
             this.label8.Size = new System.Drawing.Size(89, 15);
             this.label8.TabIndex = 10;
@@ -120,7 +120,7 @@
             this.label7.Anchor = System.Windows.Forms.AnchorStyles.None;
             this.label7.AutoSize = true;
             this.label7.Font = new System.Drawing.Font("Segoe UI Black", 7F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label7.Location = new System.Drawing.Point(458, 477);
+            this.label7.Location = new System.Drawing.Point(806, 508);
             this.label7.Name = "label7";
             this.label7.Size = new System.Drawing.Size(88, 15);
             this.label7.TabIndex = 9;
@@ -131,7 +131,7 @@
             this.label6.Anchor = System.Windows.Forms.AnchorStyles.None;
             this.label6.AutoSize = true;
             this.label6.Font = new System.Drawing.Font("Segoe UI Black", 7F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label6.Location = new System.Drawing.Point(194, 477);
+            this.label6.Location = new System.Drawing.Point(259, 508);
             this.label6.Name = "label6";
             this.label6.Size = new System.Drawing.Size(109, 15);
             this.label6.TabIndex = 8;
@@ -142,7 +142,7 @@
             this.label5.Anchor = System.Windows.Forms.AnchorStyles.None;
             this.label5.AutoSize = true;
             this.label5.Font = new System.Drawing.Font("Segoe UI Black", 7F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label5.Location = new System.Drawing.Point(28, 477);
+            this.label5.Location = new System.Drawing.Point(58, 508);
             this.label5.Name = "label5";
             this.label5.Size = new System.Drawing.Size(86, 15);
             this.label5.TabIndex = 7;
@@ -153,7 +153,7 @@
             this.totalDateLabel.Anchor = System.Windows.Forms.AnchorStyles.None;
             this.totalDateLabel.AutoSize = true;
             this.totalDateLabel.Font = new System.Drawing.Font("Segoe UI Black", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.totalDateLabel.Location = new System.Drawing.Point(44, 492);
+            this.totalDateLabel.Location = new System.Drawing.Point(45, 523);
             this.totalDateLabel.Name = "totalDateLabel";
             this.totalDateLabel.Size = new System.Drawing.Size(119, 28);
             this.totalDateLabel.TabIndex = 6;
@@ -168,8 +168,8 @@
             this.dataHistoryTable.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 265F));
             this.dataHistoryTable.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 265F));
             this.dataHistoryTable.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 265F));
-            this.dataHistoryTable.Controls.Add(this.todayVoltageLabel, 3, 1);
-            this.dataHistoryTable.Controls.Add(this.todayCurrentLabel, 2, 1);
+            this.dataHistoryTable.Controls.Add(this.todayCurrentLabel, 3, 1);
+            this.dataHistoryTable.Controls.Add(this.todayVoltageLabel, 2, 1);
             this.dataHistoryTable.Controls.Add(this.todayKeypressesLabel, 1, 1);
             this.dataHistoryTable.Controls.Add(this.todayDateLabel, 0, 1);
             this.dataHistoryTable.Controls.Add(this.label4, 3, 0);
@@ -181,30 +181,74 @@
             this.dataHistoryTable.RowCount = 2;
             this.dataHistoryTable.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 50F));
             this.dataHistoryTable.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 50F));
-            this.dataHistoryTable.Size = new System.Drawing.Size(953, 438);
+            this.dataHistoryTable.Size = new System.Drawing.Size(953, 470);
             this.dataHistoryTable.TabIndex = 0;
+            // 
+            // todayCurrentLabel
+            // 
+            this.todayCurrentLabel.Anchor = System.Windows.Forms.AnchorStyles.None;
+            this.todayCurrentLabel.AutoSize = true;
+            this.todayCurrentLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 7.8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.todayCurrentLabel.Location = new System.Drawing.Point(799, 241);
+            this.todayCurrentLabel.Name = "todayCurrentLabel";
+            this.todayCurrentLabel.Size = new System.Drawing.Size(47, 16);
+            this.todayCurrentLabel.TabIndex = 8;
+            this.todayCurrentLabel.Text = "current";
+            // 
+            // todayVoltageLabel
+            // 
+            this.todayVoltageLabel.Anchor = System.Windows.Forms.AnchorStyles.None;
+            this.todayVoltageLabel.AutoSize = true;
+            this.todayVoltageLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 7.8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.todayVoltageLabel.Location = new System.Drawing.Point(531, 241);
+            this.todayVoltageLabel.Name = "todayVoltageLabel";
+            this.todayVoltageLabel.Size = new System.Drawing.Size(52, 16);
+            this.todayVoltageLabel.TabIndex = 7;
+            this.todayVoltageLabel.Text = "voltage";
+            // 
+            // todayKeypressesLabel
+            // 
+            this.todayKeypressesLabel.Anchor = System.Windows.Forms.AnchorStyles.None;
+            this.todayKeypressesLabel.AutoSize = true;
+            this.todayKeypressesLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 7.8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.todayKeypressesLabel.Location = new System.Drawing.Point(253, 241);
+            this.todayKeypressesLabel.Name = "todayKeypressesLabel";
+            this.todayKeypressesLabel.Size = new System.Drawing.Size(78, 16);
+            this.todayKeypressesLabel.TabIndex = 6;
+            this.todayKeypressesLabel.Text = "keypresses";
+            // 
+            // todayDateLabel
+            // 
+            this.todayDateLabel.Anchor = System.Windows.Forms.AnchorStyles.None;
+            this.todayDateLabel.AutoSize = true;
+            this.todayDateLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 7.8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.todayDateLabel.Location = new System.Drawing.Point(63, 241);
+            this.todayDateLabel.Name = "todayDateLabel";
+            this.todayDateLabel.Size = new System.Drawing.Size(34, 16);
+            this.todayDateLabel.TabIndex = 5;
+            this.todayDateLabel.Text = "date";
             // 
             // label4
             // 
             this.label4.Anchor = System.Windows.Forms.AnchorStyles.None;
             this.label4.AutoSize = true;
             this.label4.Font = new System.Drawing.Font("Segoe UI Black", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label4.Location = new System.Drawing.Point(769, 11);
+            this.label4.Location = new System.Drawing.Point(768, 11);
             this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(106, 28);
+            this.label4.Size = new System.Drawing.Size(108, 28);
             this.label4.TabIndex = 4;
-            this.label4.Text = "VOLTAGE";
+            this.label4.Text = "CURRENT";
             // 
             // label3
             // 
             this.label3.Anchor = System.Windows.Forms.AnchorStyles.None;
             this.label3.AutoSize = true;
             this.label3.Font = new System.Drawing.Font("Segoe UI Black", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label3.Location = new System.Drawing.Point(503, 11);
+            this.label3.Location = new System.Drawing.Point(504, 11);
             this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(108, 28);
+            this.label3.Size = new System.Drawing.Size(106, 28);
             this.label3.TabIndex = 3;
-            this.label3.Text = "CURRENT";
+            this.label3.Text = "VOLTAGE";
             // 
             // label1
             // 
@@ -242,50 +286,6 @@
             this.textBox18.Text = "Data History";
             this.textBox18.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
             // 
-            // todayDateLabel
-            // 
-            this.todayDateLabel.Anchor = System.Windows.Forms.AnchorStyles.None;
-            this.todayDateLabel.AutoSize = true;
-            this.todayDateLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 7.8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.todayDateLabel.Location = new System.Drawing.Point(63, 236);
-            this.todayDateLabel.Name = "todayDateLabel";
-            this.todayDateLabel.Size = new System.Drawing.Size(34, 16);
-            this.todayDateLabel.TabIndex = 5;
-            this.todayDateLabel.Text = "date";
-            // 
-            // todayKeypressesLabel
-            // 
-            this.todayKeypressesLabel.Anchor = System.Windows.Forms.AnchorStyles.None;
-            this.todayKeypressesLabel.AutoSize = true;
-            this.todayKeypressesLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 7.8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.todayKeypressesLabel.Location = new System.Drawing.Point(253, 236);
-            this.todayKeypressesLabel.Name = "todayKeypressesLabel";
-            this.todayKeypressesLabel.Size = new System.Drawing.Size(78, 16);
-            this.todayKeypressesLabel.TabIndex = 6;
-            this.todayKeypressesLabel.Text = "keypresses";
-            // 
-            // todayCurrentLabel
-            // 
-            this.todayCurrentLabel.Anchor = System.Windows.Forms.AnchorStyles.None;
-            this.todayCurrentLabel.AutoSize = true;
-            this.todayCurrentLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 7.8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.todayCurrentLabel.Location = new System.Drawing.Point(534, 236);
-            this.todayCurrentLabel.Name = "todayCurrentLabel";
-            this.todayCurrentLabel.Size = new System.Drawing.Size(47, 16);
-            this.todayCurrentLabel.TabIndex = 7;
-            this.todayCurrentLabel.Text = "current";
-            // 
-            // todayVoltageLabel
-            // 
-            this.todayVoltageLabel.Anchor = System.Windows.Forms.AnchorStyles.None;
-            this.todayVoltageLabel.AutoSize = true;
-            this.todayVoltageLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 7.8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.todayVoltageLabel.Location = new System.Drawing.Point(796, 236);
-            this.todayVoltageLabel.Name = "todayVoltageLabel";
-            this.todayVoltageLabel.Size = new System.Drawing.Size(52, 16);
-            this.todayVoltageLabel.TabIndex = 8;
-            this.todayVoltageLabel.Text = "voltage";
-            // 
             // dataHistory
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
@@ -293,7 +293,7 @@
             this.Controls.Add(this.textBox18);
             this.Controls.Add(this.panel1);
             this.Name = "dataHistory";
-            this.Size = new System.Drawing.Size(1505, 652);
+            this.Size = new System.Drawing.Size(1505, 682);
             this.panel1.ResumeLayout(false);
             this.panel1.PerformLayout();
             this.dataHistoryTable.ResumeLayout(false);
@@ -320,8 +320,8 @@
         private System.Windows.Forms.Label label8;
         private System.Windows.Forms.Label label7;
         private System.Windows.Forms.Label label6;
-        private System.Windows.Forms.Label todayVoltageLabel;
         private System.Windows.Forms.Label todayCurrentLabel;
+        private System.Windows.Forms.Label todayVoltageLabel;
         private System.Windows.Forms.Label todayKeypressesLabel;
         private System.Windows.Forms.Label todayDateLabel;
     }
