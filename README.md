@@ -27,7 +27,7 @@ A dedicated Graphical User Interface provides real-time user feedback on keyboar
 
 For a dynamic overview, demonstration, and detailed findings, view our video and the complete thesis document.
 
-➡️ **[WATCH THE KEYNERGY THESIS VIDEO HERE]([https://www.youtube.com/your-video-link](https://www.youtube.com/watch?v=6ZsAPNvZQUU&t=69s))** ⬅️
+**[Watch the Keynergy Thesis Video Presentation on YouTube](https://www.youtube.com/watch?v=6ZsAPNvZQUU&t=69s)**
 
 The final thesis document is available in the **`/report`** directory.
 
