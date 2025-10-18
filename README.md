@@ -38,6 +38,12 @@ The main page is divided into two sections: **Pressed Keys** (the numerical pad)
     * **Light Red:** 400 and above Key Presses
 * **Real-Time Data:** The right panel displays the exact number of keypresses for each key, along with the **Generated Energy** calculation in real-time.
 
+## 📺 Video Summary
+
+Watch our video presentation for a demonstration of the **Keynergy** prototype, a breakdown of the energy-harvesting mechanism, and a live view of the GUI in action!
+
+➡️ **[WATCH THE KEYNERGY THESIS VIDEO HERE](https://www.youtube.com/your-video-link)** ⬅️
+
 ---
 
 ## 🔬 Experimental Results
