@@ -30,7 +30,7 @@ The real-time Graphical User Interface (GUI) is a core component of Keynergy, al
 
 The main page is divided into two sections: **Pressed Keys** (the numerical pad) and **Key Presses & Generated Energy** (the right panel).
 
-![Keynergy GUI showing keypress heatmaps and energy data](images/keynergy-ui.png)
+![Keynergy GUI showing keypress heatmaps and energy data](images/keynergy-ui.jpg)
 
 * **Color-Coded Feedback:** The numeric pad provides immediate, visual feedback on usage intensity. Keys change color based on the number of keypresses:
     * **Light Orange:** 0 – 199 Key Presses
