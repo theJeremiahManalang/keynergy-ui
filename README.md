@@ -2,18 +2,6 @@
 
 **A novel solenoid-based mechanical keyboard that converts mechanical energy from keypresses into electrical energy via electromagnetic induction, validated through a functional prototype and real-time monitoring GUI.**
 
-## 👥 Authors
-
-| Name | Student ID | Role | Contact |
-| :--- | :--- | :--- | :--- |
-| **\[Full Name 1]** | \[ID 1] | Researcher / Developer | \[Email or Link] |
-| **\[Full Name 2]** | \[ID 2] | Researcher / Writer | \[Email or Link] |
-| **\[Full Name 3]** | \[ID 3] | Data Analyst / Tester | \[Email or Link] |
-
-### 👨‍🏫 Advisor
-
-**\[Prof. Full Name]** | \[Advisor's Department/University] | \[Advisor's Email or Link]
-
 ---
 
 ## 💡 Overview and Motivation
@@ -42,7 +30,7 @@ The real-time Graphical User Interface (GUI) is a core component of Keynergy, al
 
 The main page is divided into two sections: **Pressed Keys** (the numerical pad) and **Key Presses & Generated Energy** (the right panel).
 
-![Keynergy GUI showing keypress heatmaps and energy data](figures/image_99c297.png)
+![Keynergy GUI showing keypress heatmaps and energy data](images/keynergy-ui.png)
 
 * **Color-Coded Feedback:** The numeric pad provides immediate, visual feedback on usage intensity. Keys change color based on the number of keypresses:
     * **Light Orange:** 0 – 199 Key Presses
